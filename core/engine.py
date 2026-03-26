@@ -2,7 +2,6 @@ import logging
 from dataclasses import dataclass
 from typing import Dict, Any
 
-
 @dataclass
 class AlphaMetrics:
     # Screening Layer (8 metrics)
@@ -17,8 +16,8 @@ class AlphaMetrics:
 
     # Quantitative Analysis (14 metrics - simplified for scoring)
     momentum_score: float  # RSI, MACD, etc.
-    volume_score: float  # OBV, Vol Change, etc.
-    volatility_score: float  # ATR, BB, etc.
+    volume_score: float    # OBV, Vol Change, etc.
+    volatility_score: float # ATR, BB, etc.
 
     # Contextual Intelligence (6 metrics)
     smart_money_flow: float
@@ -28,31 +27,26 @@ class AlphaMetrics:
     github_commits_30d: int
     funding_rate: float
 
-
 class AlphaEngine:
     """
     Implementation of the FAS (Final Alpha Score) formula.
     FAS = (0.4 * MS) + (0.2 * RAR) + (0.3 * OCHS) + (0.1 * NS)
     """
-
+    
     @staticmethod
     def calculate_fas(metrics: AlphaMetrics) -> float:
         try:
             # 1. Momentum Score (MS)
             ms = metrics.momentum_score
-
+            
             # 2. Risk-Adjusted Return (RAR)
             # Simplified: Expected Return / Volatility
             rar = metrics.volume_score / (metrics.volatility_score + 0.001)
-
+            
             # 3. On-Chain Health Score (OCHS)
             # Simplified: Liquidity + Holder Growth - Concentration
-            ochs = (
-                (metrics.liquidity_usd / 1000000)
-                + (metrics.holder_count / 1000)
-                - (metrics.top10_holder_pct / 100)
-            )
-
+            ochs = (metrics.liquidity_usd / 1000000) + (metrics.holder_count / 1000) - (metrics.top10_holder_pct / 100)
+            
             # 4. Sentiment / Narrative Score (NS)
             ns = (metrics.social_volume_24h / 1000) + (metrics.kol_mentions_count / 10)
 
@@ -72,9 +66,9 @@ class AlphaEngine:
     def from_dict(cls, data: Dict[str, Any]) -> float:
         """Helper to calculate FAS from raw dictionary data"""
         metrics = AlphaMetrics(
-            market_sentiment=data.get("ms", 0.0),
-            risk_adjusted_return=data.get("rar", 0.0),
-            on_chain_health=data.get("ochs", 0.0),
-            network_strength=data.get("ns", 0.0),
+            market_sentiment=data.get('ms', 0.0),
+            risk_adjusted_return=data.get('rar', 0.0),
+            on_chain_health=data.get('ochs', 0.0),
+            network_strength=data.get('ns', 0.0)
         )
         return cls.calculate_fas(metrics)

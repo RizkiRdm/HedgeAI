@@ -4,9 +4,8 @@ import threading
 from pathlib import Path
 from typing import Optional, Any
 
-
 class DatabaseManager:
-    _instance: Optional["DatabaseManager"] = None
+    _instance: Optional['DatabaseManager'] = None
     _lock = threading.Lock()
 
     def __new__(cls, db_path: str = "data/state.duckdb"):
@@ -19,7 +18,7 @@ class DatabaseManager:
     def __init__(self, db_path: str = "data/state.duckdb"):
         if self._initialized:
             return
-
+        
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.conn = duckdb.connect(str(self.db_path))
@@ -29,8 +28,7 @@ class DatabaseManager:
 
     def _init_db(self):
         """Initialize database schema based on BLUEPRINT.md"""
-        self.conn.execute(
-            """
+        self.conn.execute("""
             CREATE TABLE IF NOT EXISTS market_cache (
                 ticker VARCHAR PRIMARY KEY,
                 metrics JSON,
@@ -65,42 +63,30 @@ class DatabaseManager:
                 status VARCHAR,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
-        """
-        )
+        """)
         # Initialize default config if not exists
-        self.conn.execute(
-            "INSERT OR IGNORE INTO system_config (key, value) VALUES ('emergency_stop', 'false')"
-        )
-        self.conn.execute(
-            "INSERT OR IGNORE INTO system_config (key, value) VALUES ('fas_threshold', '75')"
-        )
+        self.conn.execute("INSERT OR IGNORE INTO system_config (key, value) VALUES ('emergency_stop', 'false')")
+        self.conn.execute("INSERT OR IGNORE INTO system_config (key, value) VALUES ('fas_threshold', '75')")
 
     def get_cache(self, ticker: str) -> Optional[dict]:
-        result = self.conn.execute(
-            "SELECT metrics FROM market_cache WHERE ticker = ?", [ticker]
-        ).fetchone()
+        result = self.conn.execute("SELECT metrics FROM market_cache WHERE ticker = ?", [ticker]).fetchone()
         return result[0] if result else None
 
     def update_state(self, table: str, data: dict, where_clause: str = ""):
+        # Simplified update logic for demonstration
         # In production, use parameterized queries for security
         keys = ", ".join(data.keys())
         placeholders = ", ".join(["?" for _ in data])
         values = list(data.values())
-
+        
         if where_clause:
             set_clause = ", ".join([f"{k} = ?" for k in data.keys()])
-            self.conn.execute(
-                f"UPDATE {table} SET {set_clause} WHERE {where_clause}", values
-            )
+            self.conn.execute(f"UPDATE {table} SET {set_clause} WHERE {where_clause}", values)
         else:
-            self.conn.execute(
-                f"INSERT OR REPLACE INTO {table} ({keys}) VALUES ({placeholders})",
-                values,
-            )
+            self.conn.execute(f"INSERT OR REPLACE INTO {table} ({keys}) VALUES ({placeholders})", values)
 
     def close(self):
         self.conn.close()
-
 
 # Singleton Accessor
 def get_db() -> DatabaseManager:

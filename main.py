@@ -4,6 +4,7 @@ import os
 from dotenv import load_dotenv
 from crewai import Crew, Process
 from agents.factory import AgentFactory
+from core.tasks import TaskFactory
 from heartbeat.loop import HeartbeatDaemon
 from core.database import get_db
 
@@ -27,22 +28,21 @@ async def run_orchestrator():
     try:
         # Initialize Agents
         agents = AgentFactory.create_agents()
-        overseer = agents[0]
         
-        # Define Tasks (Simplified for Sprint 1 & 2)
-        # TODO: Define granular tasks for each agent based on BLUEPRINT.md
+        # Initialize Tasks
+        tasks = TaskFactory.create_tasks(agents)
         
         # Initialize Crew
         trading_crew = Crew(
             agents=agents,
-            tasks=[], # Tasks will be dynamically generated in later sprints
+            tasks=tasks,
             process=Process.sequential,
             verbose=True
         )
         
-        logging.info("CrewAI Orchestrator ready. Executing cycle...")
-        # result = trading_crew.kickoff()
-        # logging.info(f"Cycle Result: {result}")
+        logging.info("CrewAI Orchestrator starting full consensus cycle...")
+        result = trading_crew.kickoff()
+        logging.info(f"Cycle Result: {result}")
         
     except Exception as e:
         logging.error(f"Orchestrator Failure: {e}")
