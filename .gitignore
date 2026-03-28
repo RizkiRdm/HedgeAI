@@ -1,8 +1,24 @@
-node_modules/
-build/
-dist/
-coverage/
-.DS_Store
-*.log
-.env*
-!.env.example
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.venv/
+env/
+venv/
+ENV/
+
+# Database
+data/*.duckdb
+data/*.duckdb.wal
+
+# Logs
+logs/*.log
+
+# Env
+.env
+
+# docs
+docs/prompts.md
+docs/SPRINT_PLAN.md
