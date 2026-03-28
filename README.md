@@ -71,4 +71,4 @@ Sistem ini digerakkan oleh 7 agen spesialis dengan tugas spesifik:
 ---
 
 ## 📜 Documentation
-Untuk detail arsitektur mendalam, silakan baca [ARCHITECTURE.md](./ARCHITECTURE.md).
+Untuk detail arsitektur mendalam, silakan baca [ARCHITECTURE.md](./docs/ARCHITECTURE.md).
