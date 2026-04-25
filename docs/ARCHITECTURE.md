@@ -1,135 +1,320 @@
-# Project Blueprint: CryptoHedgeAI Crew
-**Version:** 3.3 (Unified & Deterministic)
-**Last Updated:** 2026-03-28
-**Status:** Approved for Implementation
+# ARCHITECTURE.md — CryptoHedgeAI Crew
+> Technical reference for the hybrid Python + Go autonomous trading system.
 
 ---
 
-## 1. Context & Goals
-*Menghindari over-engineering dengan fokus pada otonomi trading.*
+## 1. System Overview
 
-- **Problem Statement:** Trader manusia tidak mampu melakukan scanning 500+ koin secara real-time tanpa emosi dan kelelahan.
-- **Primary Goals:** - **High-Velocity Scanning:** Memproses 300 koin dalam < 8 detik.
-    - **Algorithmic Discipline:** Eksekusi hanya berdasarkan FAS Score dan Risk Guardian Veto.
-    - **Self-Sovereignty:** Bot mampu membiayai operasionalnya sendiri melalui profit tax.
-- **Non-Goals:**
-    - No Web UI (Interface hanya via OpenClaw/Terminal/Telegram).
-    - No Leverage/Futures (Spot trading only).
-    - No Multi-user support.
+CryptoHedgeAI is a **dual-layer autonomous trading system**:
+
+- **Python Layer (AI Brain):** CrewAI-orchestrated agents handle reasoning, scoring, evaluation, and decision-making.
+- **Go Layer (Execution Engine):** Handles real-time market streaming, order execution, and on-chain interactions with sub-100ms latency.
+- **Next.js Dashboard:** Real-time monitoring UI pushed via WebSocket.
+
+The two layers communicate exclusively via **gRPC** — no shared memory, no direct DB access from Go.
 
 ---
 
-## 2. Tech Stack & Constraints
-*AI dilarang keras menggunakan library di luar daftar ini.*
-
-| Category          | Technology   | Version | Constraint / Reason                             |
-|:------------------|:-------------|:--------|:------------------------------------------------|
-| **Language**      | Python       | 3.11+   | Wajib menggunakan Type Hinting & Asyncio        |
-| **Orchestration** | CrewAI       | Latest  | Framework utama untuk 7-Agent Consensus         |
-| **Database**      | DuckDB       | Latest  | Local-first analytical DB untuk speed & caching |
-| **Trading Lib**   | CCXT         | Latest  | Abstraksi koneksi ke DEX/CEX                    |
-| **Analytics**     | pandas-ta    | Latest  | Kalkulasi indikator teknikal (RSI, MACD, dll)   |
-| **Communication** | Telegram Bot | -       | Notifikasi kritis & Emergency Command           |
-| **Interface**     | OpenClaw     | -       | Gateway kontrol berbasis LLM                    |
-
-- **Forbidden Libraries:**
-    - Dilarang menggunakan **SQLAlchemy** (Wajib raw SQL untuk DuckDB).
-    - Dilarang menggunakan **Node.js/TypeScript** untuk core logic.
-    - Dilarang menggunakan **Pandas** (Wajib gunakan DuckDB/Polars untuk efisiensi memori).
-
----
-
-## 3. Principles & Patterns
-*Aturan main coding untuk AI Agent.*
-
-- **Folder Structure:**
-  ```text
-  src/
-  ├── agents/          # Definisi persona & tools CrewAI
-  ├── core/            # Math logic (FAS, Kelly, Slippage)
-  ├── state/           # DuckDB schema & migrations
-  ├── heartbeat/       # Daemon & Tick Controller (Lifecycle)
-  ├── tools/           # API Wrappers (DexScreener, Covalent)
-  └── utils/           # Logger, Telegram Notifier
-  ```
-- **Naming Convention:**
-    - Functions/Variables: `snake_case`.
-    - Classes: `PascalCase`.
-    - DB Tables: `snake_case`.
-- **Error Handling:** Semua kegagalan API harus di-retry maksimal 3x dengan *exponential backoff* sebelum jatuh ke cache DuckDB.
-
----
-
-## 4. High-Level Architecture (Mermaid)
-*Visualisasi alur data dari Trigger hingga Execution.*
+## 2. High-Level Architecture
 
 ```mermaid
 graph TD
-    HB[Heartbeat Daemon] -->|Tick Every 15s| OS[Overseer Agent]
-    OS -->|Task: Fetch| DO[Data Oracle]
-    DO <-->|Query/Update| DB[(DuckDB Cache)]
-    DO -->|External Call| APIs[DexScreener/CCXT]
-    
-    DO -->|Clean Data| QS[Quant Strategist]
-    QS -->|Calculate FAS| QS
-    QS -->|Signal if FAS >= 75| RG[Risk Guardian]
-    
-    RG -->|Sizing & Veto| ET[Execution Trader]
-    ET -->|Swap| APIs
-    ET -->|Log Result| AC[Accountant]
-    
-    AC -->|Tax 0.5%| DB
-    AC -->|Notify| TG[Telegram]
+    subgraph "Heartbeat Layer"
+        HB[Daemon — 15s tick]
+    end
+
+    subgraph "Python AI Layer"
+        HB -->|Tick| OS[Overseer Agent]
+        OS -->|Delegate fetch| DO[Data Oracle Agent]
+        DO <-->|R/W| DB[(DuckDB)]
+        DO -->|Fetch| EXT[External APIs]
+        DO -->|Tickers| QS[Quant Strategist Agent]
+        QS -->|Call scorer tools| TOOLS[Score Tools Layer]
+        TOOLS -->|MS, RAR, OCHS, NS| QS
+        QS -->|FAS >= 0.75 signal| RG[Risk Guardian Agent]
+        RG -->|Approved order| ET[Execution Trader Agent]
+        ET -->|Log result| AC[Accountant Agent]
+        AC -->|Notify| TG[Telegram Bot]
+        AC -->|Push metrics| WS[WebSocket Server]
+    end
+
+    subgraph "Go Execution Layer"
+        ET -->|gRPC: dry_run + execute| GE[Go Execution Engine]
+        GE -->|REST/WebSocket| CEX[OKX CEX]
+        GE -->|RPC| DEX[Jupiter DEX Solana]
+        GE -->|Confirmation| ET
+    end
+
+    subgraph "Eval Layer — Independent Schedule"
+        EA[Eval Agent] -->|Read trade_history| DB
+        EA -->|Backtest| DB
+        EA -->|Proposal| TG
+    end
+
+    subgraph "Monitoring Layer"
+        WS -->|Push| DASH[Next.js Dashboard]
+        TG -->|Alerts + Commands| USER[User]
+        DASH -->|Read-only| USER
+    end
 ```
 
 ---
 
-## 5. Data Architecture (Schema)
-*AI akan menggunakan ini untuk mendefinisikan tabel DuckDB.*
+## 3. Layer Breakdown
 
-### Core Tables
-| Table             | Fields                                                  | Description                 |
-|:------------------|:--------------------------------------------------------|:----------------------------|
-| **market_cache**  | `ticker`, `sector`, `metrics_json`, `last_updated`      | Data screening koin         |
-| **trade_history** | `id`, `ticker`, `entry_p`, `exit_p`, `fas_score`, `pnl` | Log performa trading        |
-| **system_config** | `param_name`, `param_value`, `is_locked`                | Config & Emergency status   |
-| **ops_ledger**    | `id`, `amount`, `category`, `timestamp`                 | Tracking profit tax & bills |
+### 3.1 Heartbeat Daemon
+
+- Fires tick every 15 seconds
+- No business logic — only triggers Overseer
+- Cron job inside container ensures restart on failure
+
+### 3.2 Agent Execution Order (per tick)
+
+```
+Overseer → Data Oracle → [Score Tools] → Quant Strategist → Risk Guardian → Execution Trader → Accountant
+```
+
+Eval Agent runs on independent schedule:
+- Micro: every 2 weeks
+- Quarterly: every 3 months
+- Annual: every 12 months
+
+### 3.3 Score Tools Layer
+
+Tools are deterministic Python functions — NOT AI. Each returns float 0.0–1.0.
+
+| Tool               | Input                                  | Score Logic                          |
+|--------------------|----------------------------------------|--------------------------------------|
+| `momentum_scorer`  | OHLCV 24h, volume                      | RSI + MACD + price velocity          |
+| `rar_scorer`       | OHLCV 7d, volatility                   | Sharpe-like ratio + max drawdown     |
+| `onchain_scorer`   | Covalent: addresses, tx count, holders | 7d growth delta                      |
+| `narrative_scorer` | CryptoPanic, Fear & Greed              | Sentiment polarity + regime modifier |
+
+### 3.4 Go Execution Engine
+
+gRPC service definition:
+
+```protobuf
+service ExecutionEngine {
+    rpc DryRunSwap(SwapRequest) returns (DryRunResult);
+    rpc ExecuteSwap(SwapRequest) returns (SwapResult);
+    rpc StreamMarketData(StreamRequest) returns (stream MarketTick);
+    rpc GetPortfolio(Empty) returns (PortfolioState);
+    rpc Liquidate(LiquidateRequest) returns (LiquidateResult);
+}
+
+message SwapRequest {
+    string ticker = 1;
+    double size_usd = 2;
+    string exchange = 3;  // "okx" | "jupiter"
+    bool is_sell = 4;
+}
+
+message DryRunResult {
+    double estimated_slippage = 1;
+    double price_impact = 2;
+    double estimated_output = 3;
+    bool is_safe = 4;
+}
+```
+
+### 3.5 DuckDB Schema
+
+```sql
+-- market_cache
+CREATE TABLE IF NOT EXISTS market_cache (
+    ticker VARCHAR PRIMARY KEY,
+    sector VARCHAR,
+    metrics_json JSON,
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- trade_history
+CREATE TABLE IF NOT EXISTS trade_history (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    ticker VARCHAR NOT NULL,
+    entry_p DECIMAL(18,8),
+    exit_p DECIMAL(18,8),
+    fas_score DECIMAL(5,2),
+    pnl DECIMAL(18,8),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- system_config
+CREATE TABLE IF NOT EXISTS system_config (
+    param_name VARCHAR PRIMARY KEY,
+    param_value VARCHAR NOT NULL,
+    is_locked BOOLEAN DEFAULT FALSE
+);
+
+-- ops_ledger
+CREATE TABLE IF NOT EXISTS ops_ledger (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    amount DECIMAL(18,8) NOT NULL,
+    category VARCHAR NOT NULL,
+    description VARCHAR,
+    auto_executed BOOLEAN DEFAULT FALSE,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- eval_history
+CREATE TABLE IF NOT EXISTS eval_history (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    period_type VARCHAR NOT NULL,
+    period_start DATE,
+    period_end DATE,
+    roi_actual DECIMAL(8,4),
+    roi_target DECIMAL(8,4),
+    met_target BOOLEAN,
+    config_snapshot JSON,
+    action_taken VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
 
 ---
 
-## 6. Core Logic & Math Formulas
-*Bagian ini wajib diikuti secara matematis.*
+## 4. Data Flow: Full Trade Lifecycle
 
-### A. Final Alpha Score (FAS)
-Formula konsensus untuk menentukan kualitas koin:
-$$FAS = (0.4 \times MS) + (0.2 \times RAR) + (0.3 \times OCHS) + (0.1 \times NS)$$
-*(MS: Momentum, RAR: Risk-Adjusted Return, OCHS: On-Chain Health, NS: Narrative Score).*
-
-### B. Position Sizing (Inverse Kelly)
-Menghitung alokasi per trade:
-- **Max Positions:** $TOTAL\_CAPITAL / MIN\_ALLOC\_PER\_CONVICTION$
-- **Hard Cap:** Maksimal 2% dari Total Equity (Half-Kelly applied).
-
-### C. Constraint Rules:
-1. **Sector Cap:** Maksimal 3 koin per sektor (AI, Meme, DeFi, dll).
-2. **Chain Focus:** SOL, BSC, BASE (ETH hanya jika Capital > $1000).
-3. **Emergency Stop:** - Auto-liquidate jika Equity Drawdown > 15%.
-    - Auto-liquidate jika user kirim `/panic`.
+```
+[15s Tick]
+    ↓
+[Overseer] checks EMERGENCY_STOP flag
+    ↓
+[Data Oracle] fetches 300 coins → updates market_cache
+    ↓
+[Score Tools] calculate MS, RAR, OCHS, NS per coin (deterministic)
+    ↓
+[Quant Strategist] applies FAS = (0.4×MS)+(0.2×RAR)+(0.3×OCHS)+(0.1×NS)
+    filters: FAS >= 0.75 only
+    ↓
+[Risk Guardian] checks: sector cap, drawdown, chain eligibility, slippage estimate
+    APPROVE or VETO (final, cannot be overridden)
+    ↓
+[Execution Trader]
+    → gRPC: dry_run_swap() → verify slippage < 2.0%
+    → gRPC: execute_swap() → wait tx confirmation (30s timeout)
+    ↓
+[Accountant]
+    → log to trade_history
+    → profit_tax = gross_pnl × 0.005 → ops_fund
+    → push WebSocket event to dashboard
+    → send Telegram notification
+```
 
 ---
 
-## 7. Security & Compliance
-- **Secret Management:** `PRIVATE_KEY` hanya boleh dibaca dari `.env`. AI dilarang melakukan `print()` atau `logging` pada variabel sensitif.
-- **Execution Safety:** Wajib melakukan simulasi swap (dry-run) sebelum eksekusi on-chain. Veto jika `slippage > 2.0%`.
-- **Data Integrity:** DuckDB wajib menggunakan `PRAGMA checkpoint` setiap 1 jam untuk mencegah korupsi file.
+## 5. Self-Financing Flow
+
+```
+Every Profitable Trade:
+    gross_pnl = (exit_price - entry_price) × position_size
+    profit_tax = gross_pnl × 0.005   ← 0.5% (HARDCODED)
+    ops_fund += profit_tax
+    user_net = gross_pnl - profit_tax
+
+Bill Payment Timeline:
+    T-7d  → Telegram notification to user (approve/reject buttons)
+    T-1d  → Urgent reminder if no response
+    T-0d  → AUTO-PAY if ops_fund >= bill_amount + 2× monthly_burn_reserve
+             → Payment to whitelisted address only
+             → Log to ops_ledger (auto_executed=TRUE)
+             → Telegram confirmation sent
+```
 
 ---
 
-## 8. Deployment & Infrastructure
-- **Containerization:** Gunakan `Dockerfile` berbasis `python:3.11-slim`.
-- **Persistence:** Volume mount wajib untuk folder `/data` (tempat file `.duckdb` berada).
-- **Automation:** Cron job di dalam container untuk memicu `heartbeat/daemon.py`.
+## 6. Evaluation Architecture
 
-- **ADR-001:** Memilih **DuckDB** karena trading altcoin butuh kecepatan query pada data terstruktur (OLAP) di resource VPS yang terbatas.
-- **ADR-002:** Memilih **CrewAI** untuk memfasilitasi "Consensus-based Trading", di mana satu agen (Strategist) bisa di-veto oleh agen lain (Risk Guardian).
-- **ADR-003:** Memilih **Python Asyncio** daripada Threading untuk menangani ratusan API call I/O bound secara efisien.
+```
+MICRO (biweekly):
+  Check win_rate + FAS accuracy
+  If win_rate < 45%: adjust weights ±10% (auto, no approval needed)
+
+QUARTERLY:
+  Compare ROI vs quarterly_target (default: +10%)
+  MISS → backtest quarter data → reconfigure weights → proposal if formula change needed
+  HIT  → freeze config as proven_config
+
+ANNUAL:
+  Aggregate all 4 quarters vs annual_target (default: +40%)
+  Generate annual_report.json
+  Push summary to Telegram + Dashboard
+```
+
+---
+
+## 7. Security Architecture
+
+```
+Secret Management:
+  .env → python-dotenv → loaded once at startup via core/config.py
+  NEVER logged, printed, passed between agents, or sent via Telegram
+
+Execution Safety:
+  Dry-run mandatory before every swap
+  Slippage veto: > 2.0% = abort (HARDCODED)
+  Whitelist-only: bill payment targets
+  Emergency stop: EMERGENCY_STOP flag in system_config
+  Only clearable by user via Telegram /resume
+
+Network Isolation:
+  Go engine: internal localhost gRPC only
+  Dashboard WebSocket: JWT-authenticated
+  Telegram webhook: secret token validation
+```
+
+---
+
+## 8. Docker Compose Structure
+
+```yaml
+services:
+  python_brain:
+    build: .
+    volumes:
+      - ./data:/data
+    env_file: .env
+    depends_on: [go_engine]
+    restart: unless-stopped
+
+  go_engine:
+    build: ./go_engine
+    ports:
+      - "50051:50051"
+    restart: unless-stopped
+
+  dashboard:
+    build: ./dashboard
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_WS_URL=ws://python_brain:8000/ws/live
+    restart: unless-stopped
+```
+
+---
+
+## 9. Exchange & Chain Config
+
+| Exchange | Type | Chain       | Condition                     |
+|----------|------|-------------|-------------------------------|
+| OKX      | CEX  | Multi-chain | Default — lower fees, no gas  |
+| Jupiter  | DEX  | Solana      | Alpha plays, new tokens       |
+| —        | —    | ETH         | ONLY if total capital > $1000 |
+
+Active chains: **SOL > BSC > BASE > ETH (capital-gated)**
+
+---
+
+## 10. Performance Targets
+
+| Metric          | Target       | Hardcoded?        |
+|-----------------|--------------|-------------------|
+| Scan 300 coins  | < 8 seconds  | Yes               |
+| Order execution | < 100ms      | Yes (Go layer)    |
+| Heartbeat cycle | < 14 seconds | Yes               |
+| Quarterly ROI   | +10%         | No (configurable) |
+| Annual ROI      | +40%         | No (configurable) |
+| Max drawdown    | ≤ 15%        | Yes               |
+| Max slippage    | ≤ 2.0%       | Yes               |
