@@ -1,0 +1,17 @@
+version: '3.8'
+services:
+  python_brain:
+    build: .
+    volumes:
+      - ./data:/data
+    environment:
+      - DB_PATH=/data/cryptohedge.duckdb
+  go_engine:
+    build: ./go_engine
+    ports:
+      - "50051:50051"
+  dashboard:
+    build: ./dashboard
+    ports:
+      - "3000:3000"
+      - "8000:8000"

@@ -1,74 +1,57 @@
-# 🦅 CryptoHedgeAI Crew
-**Autonomous Agent Runtime for High-Probability Altcoin Discovery & Risk-Shielded Execution.**
+# CryptoHedgeAI Crew
 
-HedgeAI adalah sistem kuantitatif berbasis agen (CrewAI) yang dirancang untuk mendeteksi peluang di pasar crypto menggunakan formula **Final Alpha Score (FAS)** dan eksekusi yang dijaga ketat oleh **Risk Guardian**.
+Autonomous 7-agent AI system that scans 300+ crypto coins, calculates quality scores, and executes spot trades — without human emotion or fatigue.
 
----
+## Overview
 
-## 🚀 Quick Start
+CryptoHedgeAI is an event-driven multi-agent pipeline designed for autonomous crypto trading. It leverages CrewAI for agent orchestration, DuckDB for high-performance data persistence, and a Go-based execution engine for real-time order processing.
 
-### 1. Prerequisites
-* **Runtime**: Python 3.11+
-* **Package Manager**: [uv](https://github.com/astral-sh/uv) (Recommended) or `pip`
+## Tech Stack
 
-### 2. Installation
+- **AI Layer:** Python 3.11+, CrewAI, DuckDB, FastAPI
+- **Execution Layer:** Go 1.22+, gRPC, WebSocket
+- **Dashboard:** Next.js 14, TailwindCSS, Recharts
+- **Infrastructure:** Docker, Docker Compose
+
+## 7-Agent Architecture
+
+1.  **Overseer:** System Orchestrator & Tick Controller.
+2.  **Data Oracle:** Market Data Fetcher & Cache Manager.
+3.  **Quant Strategist:** Signal Generator & FAS Calculator.
+4.  **Risk Guardian:** Position Sizer & Veto Authority.
+5.  **Execution Trader:** Trade Executor via Go Engine.
+6.  **Accountant:** PnL Tracker & Financial Controller.
+7.  **Eval Agent:** Performance Evaluator & Self-Reconfiguration Engine.
+
+## Core Math: Final Alpha Score (FAS)
+
+The system uses a deterministic formula to evaluate trade signals:
+
+`FAS = (0.4 × MS) + (0.2 × RAR) + (0.3 × OCHS) + (0.1 × NS)`
+
+- **MS:** Momentum Score
+- **RAR:** Risk-Adjusted Return
+- **OCHS:** On-Chain Health Score
+- **NS:** Narrative Score
+
+**Signal Threshold:** `FAS >= 0.75`
+
+## Quick Start
+
 ```bash
-# Clone the repository
-git clone <your-repo-url>
-cd CryptoHedgeAI
+# Setup environment
+cp .env.example .env  # fill in your keys
 
-# Install dependencies
-uv pip install -r requirements.txt
+# Build and run with Docker
+docker-compose up --build
 ```
 
-### 3. Environment Setup
-Salin template env dan isi kredensial lu. **Penting**: Sistem tidak akan jalan jika ada key yang kosong.
-```bash
-cp .env.example .env
-# Edit .env dengan PRIVATE_KEY, TELEGRAM_BOT_TOKEN, dll.
-```
+## Structure
 
-### 4. Initialize Database
-Buat schema DuckDB untuk pertama kali.
-```bash
-python state/init_db.py
-```
-
-### 5. Run the Engine
-```bash
-python heartbeat.py
-```
-
----
-
-## 🧠 The Crew (Agents)
-Sistem ini digerakkan oleh 7 agen spesialis dengan tugas spesifik:
-* **Overseer**: Konduktor orkestrasi siklus.
-* **Data Oracle**: Fetcher data 28 metrik secara async.
-* **Quant Strategist**: Otak di balik kalkulasi FAS Score.
-* **Risk Guardian**: Pertahanan terakhir (Veto & Sizing).
-* **Execution Trader**: Sniper eksekusi on-chain (SOL, BSC, BASE).
-* **Accountant**: Pencatat P&L dan pengelola fee operasional.
-* **Evaluator**: Auditor performa dan self-optimization.
-
----
-
-## 🛡️ Safety & Constraints
-* **Inverse Kelly Sizing**: Alokasi modal dinamis berdasarkan convition score.
-* **Sector Cap**: Maksimal 3 koin per sektor untuk diversifikasi.
-* **Emergency Stop**: Gunakan `/panic` via Telegram untuk likuidasi instan.
-* **Dry Run**: Aktifkan `DRY_RUN=true` untuk testing tanpa dana riil.
-
----
-
-## 📁 Directory Structure
-* `/agents`: Definisi agen & prompt.
-* `/core`: Formula matematika (FAS, Kelly).
-* `/state`: Schema DuckDB & maintenance.
-* `/tools`: Wrapper API (DexScreener, CCXT).
-* `/heartbeat`: Daemon script untuk loop sistem.
-
----
-
-## 📜 Documentation
-Untuk detail arsitektur mendalam, silakan baca [ARCHITECTURE.md](./docs/ARCHITECTURE.md).
+- `src/`: Python AI/logic layer
+- `go_engine/`: Go execution engine
+- `dashboard/`: Next.js monitoring UI
+- `tests/`: Unit and integration tests
+- `data/`: DuckDB persistence volume
+- `core/`: Shared math and configuration logic
+- `state/`: Database schema and migrations

@@ -1,24 +1,10 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
-
-# Environments
-.venv/
-env/
-venv/
-ENV/
-
-# Database
-data/*.duckdb
-data/*.duckdb.wal
-
-# Logs
-logs/*.log
-
-# Env
 .env
-
-# docs
-docs/prompts.md
-docs/SPRINT_PLAN.md
+data/*.duckdb
+__pycache__/
+*.pyc
+.mypy_cache/
+.pytest_cache/
+node_modules/
+go_engine/bin/
+.venv/
+uv.lock

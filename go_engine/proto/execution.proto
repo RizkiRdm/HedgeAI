@@ -1,0 +1,66 @@
+syntax = "proto3";
+package execution;
+option go_package = "./proto";
+
+service ExecutionEngine {
+    rpc DryRunSwap(SwapRequest) returns (DryRunResult);
+    rpc ExecuteSwap(SwapRequest) returns (SwapResult);
+    rpc GetPortfolio(Empty) returns (PortfolioState);
+    rpc Liquidate(LiquidateRequest) returns (LiquidateResult);
+    rpc HealthCheck(Empty) returns (HealthResponse);
+}
+
+message Empty {}
+
+message SwapRequest {
+    string ticker = 1;
+    double size_usd = 2;
+    string exchange = 3;
+    bool is_sell = 4;
+}
+
+message DryRunResult {
+    double estimated_slippage = 1;
+    double price_impact = 2;
+    double estimated_output = 3;
+    bool is_safe = 4;
+    string rejection_reason = 5;
+}
+
+message SwapResult {
+    bool success = 1;
+    string tx_hash = 2;
+    double executed_price = 3;
+    double actual_slippage = 4;
+    string error_message = 5;
+}
+
+message PortfolioState {
+    double total_capital = 1;
+    double available_capital = 2;
+    repeated Position positions = 3;
+}
+
+message Position {
+    string ticker = 1;
+    double size = 2;
+    double entry_price = 3;
+    double current_price = 4;
+    double unrealized_pnl = 5;
+}
+
+message LiquidateRequest {
+    bool liquidate_all = 1;
+    string ticker = 2;
+}
+
+message LiquidateResult {
+    bool success = 1;
+    int32 positions_closed = 2;
+    double total_pnl = 3;
+}
+
+message HealthResponse {
+    bool ok = 1;
+    string version = 2;
+}
