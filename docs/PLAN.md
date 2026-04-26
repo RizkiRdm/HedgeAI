@@ -22,10 +22,10 @@
 
 ```bash
 # Create milestones
-gh api repos/{owner}/{repo}/milestones --method POST -f title="M1: Foundation & Skeleton" -f due_on="2026-05-01T00:00:00Z"
-gh api repos/{owner}/{repo}/milestones --method POST -f title="M2: Core Agents & Scoring" -f due_on="2026-05-08T00:00:00Z"
-gh api repos/{owner}/{repo}/milestones --method POST -f title="M3: Execution & Monitoring" -f due_on="2026-05-15T00:00:00Z"
-gh api repos/{owner}/{repo}/milestones --method POST -f title="M4: Eval, Ops & Hardening" -f due_on="2026-05-24T00:00:00Z"
+gh api repos/{owner}/{repo}/milestones --method POST -f title="M1: Foundation & Skeleton" 
+gh api repos/{owner}/{repo}/milestones --method POST -f title="M2: Core Agents & Scoring" 
+gh api repos/{owner}/{repo}/milestones --method POST -f title="M3: Execution & Monitoring" 
+gh api repos/{owner}/{repo}/milestones --method POST -f title="M4: Eval, Ops & Hardening" 
 
 # Create labels (run each line)
 gh label create "setup"            --color "ededed" --description "Project initialization"

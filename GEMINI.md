@@ -29,7 +29,7 @@
 - Runtime: Go 1.22+
 - Purpose: Order execution, real-time WebSocket market streaming
 - Bridge: gRPC between Python ↔ Go layers
-- Libraries: gorilla/websocket, grpc-go
+- Libraries: go fiber/websocket, grpc-go
 
 ### Monitoring Dashboard (Frontend)
 - Backend: FastAPI + WebSocket (same Python process)
