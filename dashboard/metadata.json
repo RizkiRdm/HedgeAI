@@ -1,0 +1,6 @@
+{
+  "name": "CryptoHedgeAI",
+  "description": "Autonomous 7-agent crypto trading monitoring dashboard with real-time feed, analytics, and operational metrics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
