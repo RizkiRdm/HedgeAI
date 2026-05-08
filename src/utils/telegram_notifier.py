@@ -19,6 +19,8 @@ async def _send_message(text: str) -> bool:
         return False
     
     try:
+        # Create bot instance inside the function to ensure it's in the right event loop if needed,
+        # though standard Bot is mostly stateless in this usage.
         bot = Bot(token=TOKEN)
         await bot.send_message(chat_id=CHAT_ID, text=text, parse_mode=ParseMode.MARKDOWN)
         return True
@@ -26,7 +28,7 @@ async def _send_message(text: str) -> bool:
         log.error(f"Failed to send Telegram message: {e}")
         return False
 
-def send_trade_executed(ticker: str, pnl: float, fas_score: float, tx_hash: str) -> None:
+async def send_trade_executed(ticker: str, pnl: float, fas_score: float, tx_hash: str) -> None:
     """Notify user of executed trade."""
     emoji = "🟢" if pnl >= 0 else "🔴"
     text = (
@@ -36,18 +38,18 @@ def send_trade_executed(ticker: str, pnl: float, fas_score: float, tx_hash: str)
         f"FAS Score: `{fas_score:.2f}`\n"
         f"TX: [Hash](https://etherscan.io/tx/{tx_hash})"
     )
-    asyncio.run(_send_message(text))
+    await _send_message(text)
 
-def send_emergency_alert(reason: str) -> None:
+async def send_emergency_alert(reason: str) -> None:
     """Notify user of emergency stop."""
     text = (
         f"🚨 *EMERGENCY STOP TRIGGERED*\n"
         f"Reason: {reason}\n"
         f"Bot has paused all operations."
     )
-    asyncio.run(_send_message(text))
+    await _send_message(text)
 
-def send_formula_proposal(current: str, proposed: str, reason: str, expected_impact: str) -> None:
+async def send_formula_proposal(current: str, proposed: str, reason: str, expected_impact: str) -> None:
     """Notify user of formula change proposal."""
     text = (
         f"📊 *Formula Change Proposal*\n"
@@ -56,9 +58,9 @@ def send_formula_proposal(current: str, proposed: str, reason: str, expected_imp
         f"Reason: {reason}\n"
         f"Expected Impact: {expected_impact}"
     )
-    asyncio.run(_send_message(text))
+    await _send_message(text)
 
-def send_bill_notification(service: str, amount: float, due_date: str, days_until_due: int) -> None:
+async def send_bill_notification(service: str, amount: float, due_date: str, days_until_due: int) -> None:
     """Notify user of upcoming bill."""
     text = (
         f"📅 *Upcoming Bill*\n"
@@ -66,9 +68,9 @@ def send_bill_notification(service: str, amount: float, due_date: str, days_unti
         f"Amount: `${amount:.2f}`\n"
         f"Due Date: {due_date} ({days_until_due} days left)"
     )
-    asyncio.run(_send_message(text))
+    await _send_message(text)
 
-def send_bill_paid(service: str, amount: float, auto_executed: bool) -> None:
+async def send_bill_paid(service: str, amount: float, auto_executed: bool) -> None:
     """Confirm bill payment."""
     status = "Auto-paid" if auto_executed else "Paid"
     text = (
@@ -77,9 +79,9 @@ def send_bill_paid(service: str, amount: float, auto_executed: bool) -> None:
         f"Amount: `${amount:.2f}`\n"
         f"Status: {status}"
     )
-    asyncio.run(_send_message(text))
+    await _send_message(text)
 
-def send_ops_warning(balance: float, monthly_burn: float, runway_months: float) -> None:
+async def send_ops_warning(balance: float, monthly_burn: float, runway_months: float) -> None:
     """Notify user of low ops fund balance."""
     text = (
         f"⚠️ *Ops Fund Warning*\n"
@@ -87,10 +89,7 @@ def send_ops_warning(balance: float, monthly_burn: float, runway_months: float) 
         f"Monthly Burn: `${monthly_burn:.2f}`\n"
         f"Estimated Runway: `{runway_months:.1f} months`"
     )
-    asyncio.run(_send_message(text))
-
-# Note: Command handlers are typically in a separate bot loop, 
-# but PLAN.md mentions them here. Implementation will focus on logic.
+    await _send_message(text)
 
 async def handle_panic_command() -> None:
     """Process /panic command."""
