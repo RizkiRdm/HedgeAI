@@ -1,6 +1,7 @@
 package executor
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,6 +13,15 @@ type JupiterClient struct {
 	HTTPClient *http.Client
 }
 
+type JupiterQuoteResponse struct {
+	InputMint            string `json:"inputMint"`
+	OutputMint           string `json:"outputMint"`
+	InAmount             string `json:"inAmount"`
+	OutAmount            string `json:"outAmount"`
+	PriceImpactPct       string `json:"priceImpactPct"`
+	SlippageBps          int    `json:"slippageBps"`
+}
+
 func NewJupiterClient() *JupiterClient {
 	return &JupiterClient{
 		BaseURL:    "https://quote-api.jup.ag/v6",
@@ -19,7 +29,7 @@ func NewJupiterClient() *JupiterClient {
 	}
 }
 
-func (c *JupiterClient) GetQuote(inputMint, outputMint string, amount int64) ([]byte, error) {
+func (c *JupiterClient) GetQuote(inputMint, outputMint string, amount int64) (*JupiterQuoteResponse, error) {
 	url := fmt.Sprintf("%s/quote?inputMint=%s&outputMint=%s&amount=%d", c.BaseURL, inputMint, outputMint, amount)
 	
 	resp, err := c.HTTPClient.Get(url)
@@ -28,5 +38,15 @@ func (c *JupiterClient) GetQuote(inputMint, outputMint string, amount int64) ([]
 	}
 	defer resp.Body.Close()
 
-	return io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var quoteResp JupiterQuoteResponse
+	if err := json.Unmarshal(body, &quoteResp); err != nil {
+		return nil, err
+	}
+
+	return &quoteResp, nil
 }

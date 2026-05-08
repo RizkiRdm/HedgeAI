@@ -4,6 +4,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,6 +18,14 @@ type OKXClient struct {
 	Passphrase string
 	BaseURL    string
 	HTTPClient *http.Client
+}
+
+type OKXTickerResponse struct {
+	Code string `json:"code"`
+	Msg  string `json:"msg"`
+	Data []struct {
+		Last string `json:"last"`
+	} `json:"data"`
 }
 
 func NewOKXClient() *OKXClient {
@@ -68,6 +77,35 @@ func (c *OKXClient) Request(method, path, body string) ([]byte, error) {
 	defer resp.Body.Close()
 
 	return io.ReadAll(resp.Body)
+}
+
+func (c *OKXClient) GetTicker(instId string) (float64, error) {
+	path := fmt.Sprintf("/api/v5/market/ticker?instId=%s", instId)
+	url := c.BaseURL + path
+
+	resp, err := c.HTTPClient.Get(url)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, err
+	}
+
+	var tickerResp OKXTickerResponse
+	if err := json.Unmarshal(body, &tickerResp); err != nil {
+		return 0, err
+	}
+
+	if tickerResp.Code != "0" || len(tickerResp.Data) == 0 {
+		return 0, fmt.Errorf("OKX error: %s", tickerResp.Msg)
+	}
+
+	var price float64
+	fmt.Sscanf(tickerResp.Data[0].Last, "%f", &price)
+	return price, nil
 }
 
 func (c *OKXClient) GetOrderbook(instId string) (map[string]interface{}, error) {
