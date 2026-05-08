@@ -49,7 +49,7 @@ def set_config(param_name: str, param_value: str, is_locked: bool = False) -> No
             [param_name, param_value, is_locked]
         )
 
-def insert_trade(ticker: str, entry_p: float, fas_score: float) -> str:
+def insert_trade(ticker: str, entry_p: float, fas_score: float, tx_hash: Optional[str] = None) -> str:
     """Insert open trade. Returns the new UUID."""
     with get_connection() as conn:
         res = conn.execute(
@@ -63,6 +63,14 @@ def insert_trade(ticker: str, entry_p: float, fas_score: float) -> str:
         if not res:
             raise RuntimeError("Failed to insert trade")
         return str(res[0])
+
+def update_ops_fund(amount: float) -> None:
+    """Alias to update ops fund balance by adding an entry."""
+    insert_ops_ledger(amount, "profit_tax", "Profit tax collection")
+
+def log_ops_transaction(amount: float, category: str, description: str) -> None:
+    """Alias for insert_ops_ledger."""
+    insert_ops_ledger(amount, category, description)
 
 def close_trade(trade_id: str, exit_p: float, pnl: float) -> None:
     """Update trade with exit price and PnL."""
