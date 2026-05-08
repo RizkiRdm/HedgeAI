@@ -13,8 +13,13 @@ class LiveFeed(Static):
         overflow-y: scroll;
     }
     """
+    def __init__(self, initial_text="", **kwargs):
+        super().__init__(**kwargs)
+        self.log_content = initial_text
+
     def add_event(self, msg: str):
-        self.update(self.renderable + "\n" + msg)
+        self.log_content += "\n" + msg
+        self.update(self.log_content)
 
 class PortfolioSnapshot(Static):
     """Current portfolio metrics."""
@@ -36,7 +41,7 @@ class AgentStrip(Static):
         dock: bottom;
         height: 1;
         background: $primary;
-        color: $on-primary;
+        color: $primary;
         content-align: center middle;
     }
     """
@@ -49,7 +54,7 @@ class OpsHealthBar(Static):
     DEFAULT_CSS = """
     OpsHealthBar {
         height: 3;
-        border: sunken $warning;
+        border: solid $warning;
         padding: 0 1;
     }
     """

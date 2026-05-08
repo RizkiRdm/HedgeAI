@@ -33,9 +33,9 @@ echo "🧠 [3/5] Launching Heartbeat Daemon..."
 uv run python -m src.heartbeat.daemon > logs/heartbeat.log 2>&1 &
 
 # 4. Start Web Dashboard (Next.js)
-echo "🖥️  [4/5] Launching Web Dashboard (http://localhost:3000)..."
+echo "🖥️  [4/5] Launching Web Dashboard"
 if [ -d "dashboard/node_modules" ]; then
-    (cd dashboard && npm run dev) > ../logs/web.log 2>&1 &
+    (cd dashboard && npm run dev) &
 else
     echo "⚠️  node_modules not found in /dashboard. Web skipped. Run 'npm install' manually."
 fi

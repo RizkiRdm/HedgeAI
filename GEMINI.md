@@ -117,13 +117,13 @@ cryptohedgeai/
 pip install -r requirements.txt
 
 # Run heartbeat daemon (development)
-python -m src.heartbeat.daemon
+uv run python -m src.heartbeat.daemon
 
 # Run Go execution engine
 cd go_engine && go run main.go
 
 # Run dashboard backend
-uvicorn src.api.main:app --reload --port 8000
+uv run uvicorn src.api.main:app --reload --port 8000
 
 # Run dashboard frontend
 cd dashboard && npm run dev
@@ -138,7 +138,7 @@ ruff check src/ && mypy src/
 docker-compose up --build
 
 # Database reset (CAUTION)
-python -m src.state.db --reset
+uv run python -m src.state.db --reset
 ```
 
 ---

@@ -1,4 +1,3 @@
-# src/agents/overseer.py
 """
 Overseer Agent — System Orchestrator & Tick Controller.
 Manages the 15-second cycle. Never executes trades directly.
